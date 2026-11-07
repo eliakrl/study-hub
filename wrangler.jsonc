@@ -1,0 +1,18 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "study-hub",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": ["nodejs_als"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"vars": {
+		"REPO_OWNER": "eliakrl",
+		"REPO_NAME": "study-group",
+		"REPO_BRANCH": "main"
+	}
+	// Secrets (set with `npx wrangler secret put <NAME>` or in the Cloudflare dashboard):
+	// GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, SESSION_SECRET
+}
