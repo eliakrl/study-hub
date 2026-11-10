@@ -12,5 +12,7 @@ export const GET: RequestHandler = ({ url, cookies }) => {
 		scope: 'repo read:user',
 		state
 	});
-	redirect(302, `https://github.com/login/oauth/authorize?${params}`);
+	redirect(302, `https://github.com/login/oauth/authorize?${params}`, {
+		external: ['https://github.com']
+	});
 };
