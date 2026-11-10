@@ -20,7 +20,10 @@
 	}
 
 	let subject = $state(loadPref('subject') ?? '');
-	let category = $state<CategoryId>((loadPref('category') as CategoryId) ?? 'lecture-slides');
+	const savedCategory = loadPref('category');
+	let category = $state<CategoryId>(
+		CATEGORIES.find((c) => c.id === savedCategory)?.id ?? 'lecture-slides'
+	);
 	let week = $state('');
 	let newSubject = $state({ name: '', code: '', lecturer: '' });
 	let items = $state<Item[]>([]);

@@ -44,10 +44,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		subjectName = subjectLabel(slug).name;
 	}
 	const folder = `subjects/${slug}/${body.category}`;
-	const categoryLabel = CATEGORIES.find((c) => c.id === body.category)!.label.toLowerCase();
+	const categoryLabel = CATEGORIES.find((c) => c.id === body.category)!.label;
+	const count = `${body.files.length} file${body.files.length > 1 ? 's' : ''}`;
 	const placed: string[] = [];
 
-	const message = `${slug}: add ${body.files.length} file${body.files.length > 1 ? 's' : ''} to ${categoryLabel} (via Study Hub)`;
+	const message = `${slug}: add ${count} to ${categoryLabel} (via Study Hub)`;
 	const sha = await commit(token, message, async (snap) => {
 		const taken = new Set(snap.entries.map((e) => e.path));
 		const changes: Change[] = [];
@@ -101,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			content: appendLog(
 				log,
 				login,
-				`Uploaded ${placed.length} ${categoryLabel} to ${subjectName}`,
+				`Added ${count} to ${categoryLabel} in ${subjectName}`,
 				`Added to \`${folder}/\`${week ? ` (week ${week})` : ''}: ${list}. Uploaded via Study Hub.`
 			)
 		});

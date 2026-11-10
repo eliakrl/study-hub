@@ -44,7 +44,7 @@ export interface Deadline {
 export const CATEGORIES = [
 	{ id: 'lecture-slides', label: 'Lecture slides' },
 	{ id: 'readings', label: 'Readings' },
-	{ id: 'exam-prep', label: 'Exam prep' },
+	{ id: 'briefs', label: 'CA / Briefs' },
 	{ id: 'other', label: 'Other' }
 ] as const;
 
