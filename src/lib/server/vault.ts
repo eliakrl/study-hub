@@ -1,5 +1,14 @@
 import { parse, parseDocument, stringify } from 'yaml';
-import { CATEGORIES, type Activity, type Deadline, type Subject, type VaultFile } from '#lib/types.js';
+import {
+	CATEGORIES,
+	STEP_TYPES,
+	type Activity,
+	type Assessment,
+	type Step,
+	type StepType,
+	type Subject,
+	type VaultFile
+} from '#lib/types.js';
 import { gh, readText, repoPath, type Change, type Snapshot } from './github';
 
 export const DEADLINES_FILE = 'shared/deadlines.md';
@@ -49,7 +58,27 @@ export function uniquePath(path: string, taken: Set<string>) {
 	}
 }
 
-export function subjects(snap: Snapshot): Subject[] {
+/**
+ * A subject's display name: the H1 of `subjects/<slug>/overview.md` without the "(CODE)" suffix,
+ * falling back to a name built from the folder.
+ */
+export async function subjectName(token: string, snap: Snapshot, slug: string) {
+	const path = `subjects/${slug}/overview.md`;
+	const fallback = subjectLabel(slug).name;
+	if (!snap.entries.some((e) => e.path === path)) return fallback;
+	const text = await readText(token, path, snap.commitSha).catch(() => null);
+	const h1 = text && splitFrontmatter(text).body.match(/^#\s+(.+)$/m)?.[1];
+	return h1?.replace(/\s*\([A-Z0-9]{4,}\)\s*$/, '').trim() || fallback;
+}
+
+export async function subjects(token: string, snap: Snapshot): Promise<Subject[]> {
+	const list = subjectFiles(snap);
+	const names = await Promise.all(list.map((s) => subjectName(token, snap, s.slug)));
+	list.forEach((s, i) => (s.name = names[i]));
+	return list.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function subjectFiles(snap: Snapshot): Subject[] {
 	const bySlug = new Map<string, Subject>();
 	for (const e of snap.entries) {
 		const parts = e.path.split('/');
@@ -200,92 +229,173 @@ Assessments:
 
 // ---------- Deadlines ----------
 
-interface StoredDeadline {
-	title: string;
+interface StoredStep {
+	type: StepType;
+	label?: string;
 	due: string;
+	or?: string;
 	time?: string;
+	done?: boolean;
+}
+
+interface StoredDeadline {
+	/** Fixed at creation so it survives edits to the title or dates. */
+	id: string;
+	title: string;
 	subject?: string;
 	weight?: string;
 	notes?: string;
-	done?: boolean;
 	added_by?: string;
+	steps: StoredStep[];
 }
 
 const asDate = (v: unknown) =>
 	v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === 'string' ? v.slice(0, 10) : '';
+const asTime = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : String(v));
 
-export function deadlineId(d: { title: string; due: string }) {
-	return `${d.due}-${slugify(d.title)}`.slice(0, 80);
+/** Accepts the current shape and the old one-date shape (`due`, `time`, `done` on the item). */
+function normalize(raw: any): StoredDeadline | null {
+	if (!raw?.title) return null;
+	const rawSteps: any[] = Array.isArray(raw.steps) && raw.steps.length ? raw.steps : [raw];
+	const steps = rawSteps
+		.map((s) => ({
+			type: STEP_TYPES.some((t) => t.id === s.type) ? s.type : 'submission',
+			...(s.label ? { label: String(s.label) } : {}),
+			due: asDate(s.due),
+			...(asDate(s.or) ? { or: asDate(s.or) } : {}),
+			...(asTime(s.time) ? { time: asTime(s.time) } : {}),
+			...(s.done === true ? { done: true } : {})
+		}))
+		.filter((s) => s.due);
+	if (!steps.length) return null;
+	const title = String(raw.title);
+	return {
+		id: raw.id ? String(raw.id) : `${steps.map((s) => s.due).sort()[0]}-${slugify(title)}`.slice(0, 80),
+		title,
+		...(raw.subject ? { subject: String(raw.subject) } : {}),
+		...(raw.weight ? { weight: String(raw.weight) } : {}),
+		...(raw.notes ? { notes: String(raw.notes) } : {}),
+		...(raw.added_by ? { added_by: String(raw.added_by) } : {}),
+		steps
+	};
 }
 
-export async function loadDeadlines(token: string, snap: Snapshot): Promise<Deadline[]> {
+const firstDue = (d: StoredDeadline) => d.steps.map((s) => s.due).sort()[0];
+
+export function newDeadlineId(title: string, taken: Set<string>) {
+	const base = slugify(title).slice(0, 60) || 'deadline';
+	let id = base;
+	for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+	return id;
+}
+
+/** Step ids are `<assessment id>~<index>`; project steps use their type instead of an index. */
+export function splitStepId(id: string) {
+	const at = id.lastIndexOf('~');
+	return at === -1 ? null : { assessment: id.slice(0, at), step: id.slice(at + 1) };
+}
+
+/** Project dates come from the brief: `due:` (submission) and optionally `presentation:` (a date, or two for either/or). */
+function projectAssessment(path: string, text: string): Assessment | null {
+	const { data, body } = splitFrontmatter(text);
+	const project = path.split('/')[1];
+	const id = `project-${project}`;
+	const steps: Step[] = [];
+	const due = asDate(data.due);
+	if (due)
+		steps.push({
+			id: `${id}~submission`,
+			type: 'submission',
+			due,
+			time: asTime(data.time),
+			done: data.status === 'submitted' || data.status === 'done' || data.submitted === true
+		});
+	const pres = (Array.isArray(data.presentation) ? data.presentation : [data.presentation])
+		.map(asDate)
+		.filter(Boolean)
+		.sort();
+	if (pres.length)
+		steps.push({
+			id: `${id}~presentation`,
+			type: 'presentation',
+			due: pres[0],
+			alt: pres[1],
+			time: asTime(data.presentation_time),
+			done: data.presented === true
+		});
+	if (!steps.length) return null;
+	const weight =
+		data.weight ?? body.match(/\*{0,2}(\d{1,3}%)\*{0,2}\s+of the (?:final )?grade/i)?.[1];
+	return {
+		id,
+		title: body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? project,
+		subject: data.subject ?? subjectLabel(project).name,
+		weight: weight ? String(weight) : undefined,
+		kind: 'project',
+		source: path,
+		steps
+	};
+}
+
+export async function loadDeadlines(token: string, snap: Snapshot): Promise<Assessment[]> {
 	const briefs = snap.entries.filter((e) => /^projects\/[^/]+\/brief\.md$/.test(e.path));
-	const [shared, ...briefTexts] = await Promise.all([
-		readText(token, DEADLINES_FILE, snap.commitSha),
+	const [stored, ...briefTexts] = await Promise.all([
+		readStoredDeadlines(token, snap.commitSha),
 		...briefs.map((b) => readText(token, b.path, snap.commitSha))
 	]);
 
-	const out: Deadline[] = [];
+	const out: Assessment[] = [];
 	briefs.forEach((b, i) => {
-		const text = briefTexts[i];
-		if (!text) return;
-		const { data, body } = splitFrontmatter(text);
-		const due = asDate(data.due);
-		if (!due) return;
-		const title = body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? b.path.split('/')[1];
-		const weight =
-			data.weight ?? body.match(/\*{0,2}(\d{1,3}%)\*{0,2}\s+of the (?:final )?grade/i)?.[1];
-		const project = b.path.split('/')[1];
-		out.push({
-			id: `project-${project}`,
-			title,
-			due,
-			time: data.time ? String(data.time) : undefined,
-			subject: data.subject ?? subjectLabel(project).name,
-			weight: weight ? String(weight) : undefined,
-			done: data.status === 'submitted' || data.status === 'done' || data.submitted === true,
-			kind: 'project',
-			source: b.path
-		});
+		const a = briefTexts[i] && projectAssessment(b.path, briefTexts[i]!);
+		if (a) out.push(a);
 	});
-
-	const list: StoredDeadline[] = shared ? (splitFrontmatter(shared).data.deadlines ?? []) : [];
-	for (const d of list) {
-		const due = asDate(d.due);
-		if (!d.title || !due) continue;
+	for (const d of stored) {
+		const id = d.id;
 		out.push({
-			id: deadlineId({ title: d.title, due }),
+			id,
 			title: d.title,
-			due,
-			time: d.time ? String(d.time) : undefined,
-			subject: d.subject || undefined,
-			weight: d.weight ? String(d.weight) : undefined,
-			notes: d.notes || undefined,
-			done: d.done === true,
+			subject: d.subject,
+			weight: d.weight,
+			notes: d.notes,
 			kind: 'deadline',
 			source: DEADLINES_FILE,
-			addedBy: d.added_by
+			addedBy: d.added_by,
+			steps: d.steps.map((s, i) => ({
+				id: `${id}~${i}`,
+				type: s.type,
+				label: s.label,
+				due: s.due,
+				alt: s.or,
+				time: s.time,
+				done: s.done === true
+			}))
 		});
 	}
-	return out.sort((a, b) => (a.due + (a.time ?? '')).localeCompare(b.due + (b.time ?? '')));
+	return out;
 }
 
 /** Rewrite shared/deadlines.md: the frontmatter is the data, the table is for reading in Obsidian. */
 export function renderDeadlinesFile(list: StoredDeadline[]) {
-	const sorted = [...list].sort((a, b) => a.due.localeCompare(b.due));
-	const rows = sorted.map(
-		(d) =>
-			`| ${d.due}${d.time ? ` ${d.time}` : ''} | ${d.title.replace(/\|/g, '\\|')} | ${d.subject ?? '–'} | ${d.weight ?? '–'} | ${d.done ? 'done' : 'open'} |`
-	);
+	const sorted = [...list].sort((a, b) => firstDue(a).localeCompare(firstDue(b)));
+	const cell = (v?: string) => (v ? v.replace(/\|/g, '\\|') : '–');
+	const rows = sorted
+		.flatMap((d) =>
+			d.steps.map((s) => ({
+				sort: s.due,
+				row: `| ${s.due}${s.or ? ` or ${s.or}` : ''}${s.time ? ` ${s.time}` : ''} | ${cell(d.title)} | ${cell(s.label ?? STEP_TYPES.find((t) => t.id === s.type)?.label)} | ${cell(d.subject)} | ${cell(d.weight)} | ${s.done ? 'done' : 'open'} |`
+			}))
+		)
+		.sort((a, b) => a.sort.localeCompare(b.sort))
+		.map((r) => r.row);
 	return `---
 ${stringify({ tags: ['group', 'deadlines'], date: today(), owner: 'group', deadlines: sorted }).trimEnd()}
 ---
 # Deadlines
 
-Deadlines that aren't a project (exams, quizzes, individual hand-ins). Project deadlines live in each project's \`brief.md\` (\`due:\` in the frontmatter). Edit this list on Study Hub, or edit the frontmatter above by hand.
+Assessments that aren't a group project folder (CAs, quizzes, individual hand-ins), each with its steps (presentation, submission…). Project deadlines live in each project's \`brief.md\` (\`due:\`, and optionally \`presentation:\`). Edit this list on Study Hub, or edit the frontmatter above by hand.
 
-| Due | What | Subject | Weight | Status |
-| --- | --- | --- | --- | --- |
+| Date | What | Step | Subject | Weight | Status |
+| --- | --- | --- | --- | --- | --- |
 ${rows.join('\n')}
 `;
 }
@@ -293,8 +403,8 @@ ${rows.join('\n')}
 export async function readStoredDeadlines(token: string, ref: string): Promise<StoredDeadline[]> {
 	const text = await readText(token, DEADLINES_FILE, ref);
 	if (!text) return [];
-	const list = splitFrontmatter(text).data.deadlines ?? [];
-	return list.map((d: StoredDeadline) => ({ ...d, due: asDate(d.due) }));
+	const list = splitFrontmatter(text).data.deadlines;
+	return (Array.isArray(list) ? list : []).map(normalize).filter((d): d is StoredDeadline => !!d);
 }
 
-export type { StoredDeadline, Change };
+export type { StoredDeadline, StoredStep, Change };

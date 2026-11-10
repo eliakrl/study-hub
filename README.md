@@ -1,9 +1,9 @@
 # Study Hub
 
-A small website for our study group: upload lecture slides and readings straight into the shared Obsidian vault ([eliakrl/study-group](https://github.com/eliakrl/study-group)), and see every deadline in one place.
+A small website for our study group: upload lecture slides, readings and CA briefs straight into the shared Obsidian vault ([eliakrl/study-group](https://github.com/eliakrl/study-group)), and see every deadline in one place.
 
 - **Upload:** pick a subject, a type (lecture slides, readings, exam prep, other) and a week, then drop files. Each upload is one commit to the vault, made as the signed-in member. It puts the files in `subjects/<subject>/<type>/`, adds a row to that folder's `overview.md`, and appends to `log.md` (plus `index.md` for new subjects).
-- **Deadlines:** group projects come from `due:` in `projects/<name>/brief.md` (optionally `weight:`, `subject:`, `time:`). Everything else (exams, quizzes) lives in `shared/deadlines.md`, which the site edits. You can mark items done, or projects as submitted (`status: submitted` in the brief).
+- **Deadlines:** each assessment has one or more dated steps (presentation, submission, other). A step can have two possible dates while the slot isn't fixed ("Week 10 or Week 11"); pick the real one later. View by date (timeline) or grouped by subject. Group projects come from `projects/<name>/brief.md`: `due:` is the submission and `presentation:` (one date, or a list of two) the presentation; optionally `weight:`, `subject:`, `time:`. Everything else lives in `shared/deadlines.md`, which the site edits. Steps can be marked done; for projects that sets `status: submitted` / `presented: true` in the brief.
 - **Sign-in:** GitHub OAuth. Only people who can push to the vault repo get in.
 
 Stack: SvelteKit 3 on Cloudflare Workers, deployed from GitHub. No database; the vault repo is the database.

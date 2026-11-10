@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { CATEGORIES, type CategoryId } from '#lib/types.js';
-	import { countdown, daysUntil, fileKind, fileSize, longDate, timeAgo, urgency } from '#lib/format.js';
+	import { countdown, daysUntil, fileKind, fileSize, stepDates, timeAgo, urgency } from '#lib/format.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -329,10 +329,10 @@
 				<ul class="upcoming">
 					{#each data.upcoming as d}
 						{@const days = daysUntil(d.due, data.today)}
-						<li class={urgency(days, d.done)}>
+						<li class={urgency(days, false)}>
 							<span class="when">{countdown(days)}</span>
-							<span class="what">{d.title}</span>
-							<span class="sub">{longDate(d.due)}{d.subject ? ` · ${d.subject}` : ''}</span>
+							<span class="what">{d.step} · {d.title}</span>
+							<span class="sub">{stepDates(d.due, d.alt)}{d.subject ? ` · ${d.subject}` : ''}</span>
 						</li>
 					{/each}
 				</ul>

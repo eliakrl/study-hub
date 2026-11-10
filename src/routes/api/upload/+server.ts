@@ -8,7 +8,7 @@ import {
 	newSubjectNote,
 	safeFileName,
 	slugify,
-	subjectLabel,
+	subjectName,
 	uniquePath
 } from '#lib/server/vault.js';
 import { CATEGORIES } from '#lib/types.js';
@@ -32,16 +32,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const isNew = !body.subject;
 	let slug = body.subject;
-	let subjectName = '';
+	let displayName = '';
 	if (isNew) {
 		const n = body.newSubject;
 		if (!n?.name?.trim()) error(400, 'New subject needs a name');
 		const code = n.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 		slug = slugify(n.name) + (code ? `-${code}` : '');
-		subjectName = n.name.trim();
+		displayName = n.name.trim();
 	} else {
 		if (!/^[\w.-]+$/.test(slug)) error(400, 'Bad subject');
-		subjectName = subjectLabel(slug).name;
 	}
 	const folder = `subjects/${slug}/${body.category}`;
 	const categoryLabel = CATEGORIES.find((c) => c.id === body.category)!.label;
@@ -50,6 +49,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const message = `${slug}: add ${count} to ${categoryLabel} (via Study Hub)`;
 	const sha = await commit(token, message, async (snap) => {
+		if (!isNew) displayName = await subjectName(token, snap, slug);
 		const taken = new Set(snap.entries.map((e) => e.path));
 		const changes: Change[] = [];
 		placed.length = 0;
@@ -72,7 +72,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const title = name.replace(/\.[^.]+$/, '');
 			return { week, link: `[[${name}\\|${title}]]`, login };
 		});
-		const base = overview ?? newOverview(subjectName, body.category, login);
+		const base = overview ?? newOverview(displayName, body.category, login);
 		changes.push({ path: overviewPath, content: appendRows(base, rows) });
 
 		let nextIndex = index;
@@ -80,16 +80,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const n = body.newSubject!;
 			changes.push({
 				path: `subjects/${slug}/overview.md`,
-				content: newSubjectNote(subjectName, n.code.trim(), n.lecturer.trim(), login)
+				content: newSubjectNote(displayName, n.code.trim(), n.lecturer.trim(), login)
 			});
-			nextIndex = addToIndex(nextIndex, 'Subjects', `- [[subjects/${slug}/overview|${subjectName}]]`);
+			nextIndex = addToIndex(nextIndex, 'Subjects', `- [[subjects/${slug}/overview|${displayName}]]`);
 		}
 		if (!overview) {
 			const label = CATEGORIES.find((c) => c.id === body.category)!.label;
 			nextIndex = addToIndex(
 				nextIndex,
 				'Subjects',
-				`- [[${overviewPath.replace(/\.md$/, '')}|${subjectName} — ${label}]]`
+				`- [[${overviewPath.replace(/\.md$/, '')}|${displayName} — ${label}]]`
 			);
 		}
 		if (nextIndex !== index) changes.push({ path: 'index.md', content: nextIndex! });
@@ -102,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			content: appendLog(
 				log,
 				login,
-				`Added ${count} to ${categoryLabel} in ${subjectName}`,
+				`Added ${count} to ${categoryLabel} in ${displayName}`,
 				`Added to \`${folder}/\`${week ? ` (week ${week})` : ''}: ${list}. Uploaded via Study Hub.`
 			)
 		});

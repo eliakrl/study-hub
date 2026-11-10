@@ -5,9 +5,13 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	const token = locals.session!.token;
 	const snap = await snapshot(token);
+	const [assessments, subjectList] = await Promise.all([
+		loadDeadlines(token, snap),
+		subjects(token, snap)
+	]);
 	return {
-		deadlines: await loadDeadlines(token, snap),
-		subjects: subjects(snap).map((s) => s.name),
+		assessments,
+		subjects: subjectList.map((s) => s.name),
 		today: today()
 	};
 };

@@ -52,3 +52,7 @@ export function fileKind(name: string) {
 	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic'].includes(ext)) return 'Image';
 	return ext.toUpperCase() || 'File';
 }
+
+export function stepDates(due: string, alt?: string) {
+	return alt ? `${longDate(due)} or ${longDate(alt)}` : longDate(due);
+}
