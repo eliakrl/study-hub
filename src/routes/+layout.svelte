@@ -8,6 +8,7 @@
 
 	const links = [
 		{ href: '/', label: 'Upload' },
+		{ href: '/subjects', label: 'Subjects' },
 		{ href: '/deadlines', label: 'Deadlines' }
 	];
 </script>
@@ -17,7 +18,7 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
 		rel="stylesheet"
 	/>
 	<title>Study Hub</title>
@@ -32,7 +33,7 @@
 			</a>
 			<nav>
 				{#each links as l}
-					<a href={l.href} aria-current={page.url.pathname === l.href ? 'page' : undefined}
+					<a href={l.href} aria-current={(l.href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(l.href)) ? 'page' : undefined}
 						>{l.label}</a
 					>
 				{/each}
@@ -89,7 +90,8 @@
 		background: var(--accent);
 		color: var(--accent-ink);
 		font-family: var(--font-display);
-		font-size: 20px;
+		font-weight: 700;
+		font-size: 17px;
 		line-height: 1;
 	}
 
@@ -164,8 +166,16 @@
 			padding: 0 16px;
 		}
 		.brand span:last-child,
-		.vault {
+		.vault,
+		.me img {
 			display: none;
+		}
+		nav {
+			gap: 0;
+		}
+		nav a {
+			padding: 6px 8px;
+			font-size: 14px;
 		}
 		main {
 			padding: 20px 16px 64px;

@@ -152,7 +152,7 @@ export function addToIndex(index: string | null, heading: string, line: string) 
 	return lines.join('\n');
 }
 
-const cells = (row: string) =>
+export const cells = (row: string) =>
 	row
 		.trim()
 		.replace(/^\||\|$/g, '')

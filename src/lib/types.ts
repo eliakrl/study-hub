@@ -89,3 +89,25 @@ export type CategoryId = (typeof CATEGORIES)[number]['id'];
 export function effectiveDue(step: Step, today: string) {
 	return step.alt && step.due < today ? step.alt : step.due;
 }
+
+/** A `- [ ]` line in a subject's tasks.md. */
+export interface Task {
+	/** Position among the task lines, checked together with `text` before any edit. */
+	index: number;
+	text: string;
+	done: boolean;
+	owner?: string;
+	due?: string;
+}
+
+/** A row of the Date | Decision | Why table in decisions.md. */
+export interface Decision {
+	date: string;
+	decision: string;
+	why: string;
+}
+
+export interface Member {
+	login: string;
+	avatar: string;
+}

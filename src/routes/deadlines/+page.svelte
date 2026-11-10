@@ -473,7 +473,7 @@
 		margin-bottom: 24px;
 	}
 	.head h1 {
-		font-size: 44px;
+		font-size: 40px;
 		line-height: 1.1;
 	}
 	.head p {
@@ -609,9 +609,11 @@
 	}
 	.big strong {
 		font-family: var(--font-display);
-		font-weight: 400;
-		font-size: 64px;
+		font-weight: 700;
+		font-size: 56px;
 		line-height: 1;
+		letter-spacing: -0.04em;
+		font-variant-numeric: tabular-nums;
 	}
 	.soon .big strong {
 		color: var(--danger);

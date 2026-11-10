@@ -56,7 +56,8 @@
 		background: var(--accent);
 		color: var(--accent-ink);
 		font-family: var(--font-display);
-		font-size: 32px;
+		font-weight: 700;
+		font-size: 26px;
 	}
 	h1 {
 		font-size: 38px;

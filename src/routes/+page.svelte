@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { CATEGORIES, type CategoryId } from '#lib/types.js';
 	import { countdown, daysUntil, fileKind, fileSize, stepDates, timeAgo, urgency } from '#lib/format.js';
 	import type { PageProps } from './$types';
@@ -19,7 +20,7 @@
 		error?: string;
 	}
 
-	let subject = $state(loadPref('subject') ?? '');
+	let subject = $state(page.url.searchParams.get('subject') ?? loadPref('subject') ?? '');
 	const savedCategory = loadPref('category');
 	let category = $state<CategoryId>(
 		CATEGORIES.find((c) => c.id === savedCategory)?.id ?? 'lecture-slides'
@@ -31,7 +32,6 @@
 	let dragging = $state(false);
 	let result = $state<{ ok: boolean; text: string; paths?: string[] } | null>(null);
 	let picker: HTMLInputElement;
-	let openSubject = $state<string | null>(null);
 
 	$effect(() => {
 		if (!subject && data.subjects.length) subject = data.subjects[0].slug;
@@ -342,32 +342,17 @@
 		</section>
 
 		<section class="card panel">
-			<div class="panel-head"><h2>Library</h2></div>
+			<div class="panel-head">
+				<h2>Subjects</h2>
+				<a href="/subjects">All subjects →</a>
+			</div>
 			<ul class="library">
 				{#each data.subjects as s}
 					<li>
-						<button
-							class="subject"
-							aria-expanded={openSubject === s.slug}
-							onclick={() => (openSubject = openSubject === s.slug ? null : s.slug)}
-						>
+						<a class="subject" href="/subjects/{s.slug}">
 							<span>{s.name}</span>
-							<span class="count">{s.files.length}</span>
-						</button>
-						{#if openSubject === s.slug}
-							<ul class="files">
-								{#each s.files as f}
-									<li>
-										<a href={fileUrl(f.path)} target="_blank" rel="noreferrer">
-											<span class="kind small">{fileKind(f.name)}</span>
-											<span class="name">{f.name}</span>
-										</a>
-									</li>
-								{:else}
-									<li class="muted">No files yet</li>
-								{/each}
-							</ul>
-						{/if}
+							<span class="count">{s.files.length} file{s.files.length === 1 ? '' : 's'}</span>
+						</a>
 					</li>
 				{:else}
 					<li class="muted empty">No subjects yet</li>
@@ -377,7 +362,7 @@
 
 		{#if data.activity.length}
 			<section class="card panel">
-				<div class="panel-head"><h2>Recently added</h2></div>
+				<div class="panel-head"><h2>Recent activity</h2></div>
 				<ul class="activity">
 					{#each data.activity as a}
 						<li>
@@ -403,7 +388,7 @@
 		margin-bottom: 24px;
 	}
 	.intro h1 {
-		font-size: 44px;
+		font-size: 40px;
 		line-height: 1.1;
 	}
 	.intro p {
@@ -551,11 +536,6 @@
 		font-weight: 600;
 		color: var(--ink-2);
 	}
-	.kind.small {
-		width: 38px;
-		height: 22px;
-		font-size: 10px;
-	}
 	.meta {
 		flex: 1;
 		min-width: 0;
@@ -689,14 +669,11 @@
 		border-top: 1px solid var(--line);
 	}
 	.subject {
-		width: 100%;
 		display: flex;
 		justify-content: space-between;
+		align-items: center;
 		padding: 9px 0;
-		border: 0;
-		background: none;
-		cursor: pointer;
-		text-align: left;
+		text-decoration: none;
 	}
 	.subject:hover span:first-child {
 		text-decoration: underline;
@@ -707,23 +684,6 @@
 		background: var(--surface-2);
 		border-radius: 999px;
 		padding: 1px 8px;
-	}
-	.files {
-		padding-bottom: 10px !important;
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		font-size: 13px;
-	}
-	.files a {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		text-decoration: none;
-		min-width: 0;
-	}
-	.files a:hover .name {
-		text-decoration: underline;
 	}
 
 	.activity {
