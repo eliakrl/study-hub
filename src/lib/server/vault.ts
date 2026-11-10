@@ -58,23 +58,40 @@ export function uniquePath(path: string, taken: Set<string>) {
 	}
 }
 
+/** A `Key: value` line from a subject note's body. */
+const noteLine = (body: string, key: string) =>
+	body.match(new RegExp(`^${key}:[ \\t]*(.*)$`, 'im'))?.[1]?.trim() ?? '';
+
 /**
- * A subject's display name: the H1 of `subjects/<slug>/overview.md` without the "(CODE)" suffix,
- * falling back to a name built from the folder.
+ * What `subjects/<slug>/overview.md` says about a subject: the name (its H1 without the "(CODE)"
+ * suffix, else built from the folder) and the `Lecturer:`, `Email:` and `LMS:` lines.
  */
-export async function subjectName(token: string, snap: Snapshot, slug: string) {
+export async function subjectNote(token: string, snap: Snapshot, slug: string) {
 	const path = `subjects/${slug}/overview.md`;
-	const fallback = subjectLabel(slug).name;
+	const fallback = { name: subjectLabel(slug).name, lecturer: '', email: '', lms: '' };
 	if (!snap.entries.some((e) => e.path === path)) return fallback;
 	const text = await readText(token, path, snap.commitSha).catch(() => null);
-	const h1 = text && splitFrontmatter(text).body.match(/^#\s+(.+)$/m)?.[1];
-	return h1?.replace(/\s*\([A-Z0-9]{4,}\)\s*$/, '').trim() || fallback;
+	if (!text) return fallback;
+	const { body } = splitFrontmatter(text);
+	const email = noteLine(body, 'Email').replace(/^<|>$/g, '');
+	const lms = noteLine(body, 'LMS').replace(/^<|>$/g, '');
+	return {
+		name: body.match(/^#\s+(.+)$/m)?.[1]?.replace(/\s*\([A-Z0-9]{4,}\)\s*$/, '').trim() || fallback.name,
+		lecturer: noteLine(body, 'Lecturer'),
+		// Only well-formed values become links on the site.
+		email: /^[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}$/i.test(email) ? email : '',
+		lms: /^https:\/\/[^\s<>"]+$/.test(lms) ? lms : ''
+	};
+}
+
+export async function subjectName(token: string, snap: Snapshot, slug: string) {
+	return (await subjectNote(token, snap, slug)).name;
 }
 
 export async function subjects(token: string, snap: Snapshot): Promise<Subject[]> {
 	const list = subjectFiles(snap);
-	const names = await Promise.all(list.map((s) => subjectName(token, snap, s.slug)));
-	list.forEach((s, i) => (s.name = names[i]));
+	const notes = await Promise.all(list.map((s) => subjectNote(token, snap, s.slug)));
+	list.forEach((s, i) => Object.assign(s, notes[i]));
 	return list.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -84,7 +101,7 @@ function subjectFiles(snap: Snapshot): Subject[] {
 		const parts = e.path.split('/');
 		if (parts[0] !== 'subjects' || parts.length < 2) continue;
 		const slug = parts[1];
-		if (!bySlug.has(slug)) bySlug.set(slug, { slug, ...subjectLabel(slug), files: [] });
+		if (!bySlug.has(slug)) bySlug.set(slug, { slug, ...subjectLabel(slug), lecturer: '', email: '', lms: '', files: [] });
 		if (e.type !== 'blob' || parts.length < 3 || e.path.endsWith('.md') || parts.at(-1)!.startsWith('.'))
 			continue;
 		const file: VaultFile = {
@@ -212,7 +229,12 @@ owner: ${login}
 `;
 }
 
-export function newSubjectNote(name: string, code: string, lecturer: string, login: string) {
+export function newSubjectNote(
+	name: string,
+	code: string,
+	details: { lecturer: string; email: string; lms: string },
+	login: string
+) {
 	return `---
 tags: [subject]
 date: ${today()}
@@ -220,7 +242,9 @@ owner: ${login}
 ---
 # ${name}${code ? ` (${code})` : ''}
 
-Lecturer: ${lecturer}
+Lecturer: ${details.lecturer}
+Email: ${details.email}
+LMS: ${details.lms}
 Assessments:
 
 ## Lecture notes

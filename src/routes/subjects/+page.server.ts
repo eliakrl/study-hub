@@ -22,6 +22,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			slug: s.slug,
 			name: s.name,
 			code: s.code,
+			lecturer: s.lecturer,
 			files: s.files.length,
 			progress: progress(tasks[i], assessments.filter((a) => a.subject === s.name), now)
 		}))

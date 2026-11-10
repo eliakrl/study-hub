@@ -5,7 +5,6 @@ import {
 	members,
 	parseDecisions,
 	parseTasks,
-	subjectDetails,
 	tasksPath
 } from '#lib/server/subject.js';
 import { loadDeadlines, subjects, today } from '#lib/server/vault.js';
@@ -19,11 +18,10 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!subject) error(404, 'No such subject in the vault');
 	const read = (path: string) =>
 		snap.entries.some((e) => e.path === path) ? readText(token, path, snap.commitSha) : null;
-	const [tasks, decisions, assessments, details, team] = await Promise.all([
+	const [tasks, decisions, assessments, team] = await Promise.all([
 		read(tasksPath(subject.slug)),
 		read(decisionsPath(subject.slug)),
 		loadDeadlines(token, snap),
-		subjectDetails(token, snap, subject.slug),
 		members(token)
 	]);
 	// A project folder whose name the subject starts with, e.g. projects/capstone for capstone-B8AF124.
@@ -34,7 +32,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	);
 	return {
 		subject,
-		lecturer: details.lecturer,
 		tasks: parseTasks(tasks),
 		decisions: parseDecisions(decisions).reverse(),
 		assessments: assessments.filter((a) => a.subject === subject.name),

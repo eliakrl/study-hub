@@ -15,6 +15,10 @@ export interface Subject {
 	slug: string;
 	name: string;
 	code: string;
+	lecturer?: string;
+	email?: string;
+	/** Link to the course on the school's LMS (Moodle). */
+	lms?: string;
 	files: VaultFile[];
 }
 

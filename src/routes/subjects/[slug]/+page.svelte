@@ -109,10 +109,24 @@
 		<h1 class="display">{data.subject.name}</h1>
 		<p class="muted">
 			{#if data.subject.code}<span class="code">{data.subject.code}</span>{/if}
-			{#if data.lecturer}Lecturer: {data.lecturer}{/if}
+			{#if data.subject.lecturer}
+				<span class="teacher">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+					{data.subject.lecturer}
+				</span>
+			{/if}
+			{#if data.subject.email}
+				<a class="mail" href="mailto:{data.subject.email}">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" /><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+					{data.subject.email}
+				</a>
+			{/if}
 		</p>
 	</div>
 	<div class="head-actions">
+		{#if data.subject.lms}
+			<a class="btn primary" href={data.subject.lms} target="_blank" rel="noreferrer">Open in LMS ↗</a>
+		{/if}
 		<a class="btn" href="/?subject={data.subject.slug}">Upload here</a>
 		{#if data.project}
 			<a class="btn" href={vaultUrl(data.project)} target="_blank" rel="noreferrer">Project folder ↗</a>
@@ -284,6 +298,20 @@
 		align-items: center;
 		gap: 10px;
 		flex-wrap: wrap;
+	}
+	.teacher,
+	.mail {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.mail {
+		color: var(--ink-2);
+		text-decoration: none;
+	}
+	.mail:hover {
+		color: var(--ink);
+		text-decoration: underline;
 	}
 	.code {
 		font-size: 12px;

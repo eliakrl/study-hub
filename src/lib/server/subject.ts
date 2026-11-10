@@ -130,14 +130,6 @@ export function addDecision(
 	return lines.join('\n') + '\n';
 }
 
-/** "Lecturer: Dr X" from the subject note. */
-export async function subjectDetails(token: string, snap: Snapshot, slug: string) {
-	const path = `subjects/${slug}/overview.md`;
-	if (!snap.entries.some((e) => e.path === path)) return { lecturer: '' };
-	const text = await readText(token, path, snap.commitSha);
-	return { lecturer: text?.match(/^Lecturer:[ \t]*(.*)$/m)?.[1]?.trim() ?? '' };
-}
-
 export async function members(token: string): Promise<Member[]> {
 	const list = await gh<any[]>(token, repoPath('/collaborators?per_page=50')).catch(() => []);
 	return list.map((m) => ({ login: m.login, avatar: m.avatar_url }));

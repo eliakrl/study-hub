@@ -26,7 +26,7 @@
 		CATEGORIES.find((c) => c.id === savedCategory)?.id ?? 'lecture-slides'
 	);
 	let week = $state('');
-	let newSubject = $state({ name: '', code: '', lecturer: '' });
+	let newSubject = $state({ name: '', code: '', lecturer: '', email: '', lms: '' });
 	let items = $state<Item[]>([]);
 	let busy = $state(false);
 	let dragging = $state(false);
@@ -157,7 +157,7 @@
 			week = '';
 			if (subject === NEW) {
 				subject = paths[0].split('/')[1];
-				newSubject = { name: '', code: '', lecturer: '' };
+				newSubject = { name: '', code: '', lecturer: '', email: '', lms: '' };
 			}
 			await invalidateAll();
 		} catch (e) {
@@ -218,6 +218,14 @@
 					<label class="field">
 						Lecturer
 						<input class="input" bind:value={newSubject.lecturer} placeholder="optional" />
+					</label>
+					<label class="field">
+						Lecturer email
+						<input class="input" type="email" bind:value={newSubject.email} placeholder="optional" />
+					</label>
+					<label class="field span-2">
+						LMS link
+						<input class="input" type="url" bind:value={newSubject.lms} placeholder="https://intranet.euruni.net/course/view.php?id=…" />
 					</label>
 				</div>
 			{/if}
@@ -444,6 +452,9 @@
 		display: grid;
 		grid-template-columns: 2fr 1fr 1.5fr;
 		gap: 10px;
+	}
+	.new-subject .span-2 {
+		grid-column: span 2;
 	}
 
 	.segmented {
@@ -744,6 +755,9 @@
 		}
 		.new-subject {
 			grid-template-columns: 1fr;
+		}
+		.new-subject .span-2 {
+			grid-column: auto;
 		}
 		.step.row {
 			flex-direction: column;

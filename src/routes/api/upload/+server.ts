@@ -16,7 +16,7 @@ import type { RequestHandler } from './$types';
 
 interface Body {
 	subject: string; // existing slug, or "" for a new one
-	newSubject?: { name: string; code: string; lecturer: string };
+	newSubject?: { name: string; code: string; lecturer: string; email?: string; lms?: string };
 	category: string;
 	week: string;
 	files: { name: string; sha: string }[];
@@ -32,11 +32,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const isNew = !body.subject;
 	let slug = body.subject;
+	let code = '';
 	let displayName = '';
 	if (isNew) {
 		const n = body.newSubject;
 		if (!n?.name?.trim()) error(400, 'New subject needs a name');
-		const code = n.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+		code = n.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 		slug = slugify(n.name) + (code ? `-${code}` : '');
 		displayName = n.name.trim();
 	} else {
@@ -80,7 +81,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const n = body.newSubject!;
 			changes.push({
 				path: `subjects/${slug}/overview.md`,
-				content: newSubjectNote(displayName, n.code.trim(), n.lecturer.trim(), login)
+				content: newSubjectNote(
+					displayName,
+					code,
+					{
+						lecturer: n.lecturer.trim().slice(0, 100),
+						email: String(n.email ?? '').trim().slice(0, 100),
+						lms: /^https:\/\/\S+$/.test(String(n.lms ?? '').trim()) ? String(n.lms).trim().slice(0, 300) : ''
+					},
+					login
+				)
 			});
 			nextIndex = addToIndex(nextIndex, 'Subjects', `- [[subjects/${slug}/overview|${displayName}]]`);
 		}

@@ -20,6 +20,7 @@
 				<h2>{s.name}</h2>
 				{#if s.code}<span class="code">{s.code}</span>{/if}
 			</div>
+			{#if s.lecturer}<p class="teacher">{s.lecturer}</p>{/if}
 			<div class="bar" aria-hidden="true"><div style="width: {pct}%"></div></div>
 			<p class="stats">
 				{#if p.total}
@@ -94,6 +95,11 @@
 		background: var(--surface-2);
 		border-radius: 6px;
 		padding: 2px 7px;
+	}
+	.teacher {
+		margin: -6px 0 0;
+		font-size: 13px;
+		color: var(--ink-2);
 	}
 	.bar {
 		height: 6px;
