@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
@@ -14,7 +13,8 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/png" href="/favicon.png" />
+	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -28,7 +28,7 @@
 	<header>
 		<div class="bar">
 			<a class="brand" href="/">
-				<span class="mark" aria-hidden="true">S</span>
+				<img class="mark" src="/logo.png" alt="" width="28" height="28" />
 				<span>Study Hub</span>
 			</a>
 			<nav>
@@ -82,17 +82,11 @@
 	}
 
 	.mark {
-		display: grid;
-		place-items: center;
 		width: 28px;
 		height: 28px;
 		border-radius: 8px;
-		background: var(--accent);
-		color: var(--accent-ink);
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 17px;
-		line-height: 1;
+		object-fit: cover;
+		flex: none;
 	}
 
 	nav {

@@ -13,7 +13,7 @@
 
 <div class="wrap">
 	<div class="card box">
-		<span class="mark" aria-hidden="true">S</span>
+		<img class="mark" src="/logo.png" alt="" width="72" height="72" />
 		<h1 class="display">Study Hub</h1>
 		<p class="muted">Lecture slides, readings and deadlines for our group, saved straight into the shared vault.</p>
 		{#if data.error}
@@ -48,16 +48,10 @@
 		gap: 12px;
 	}
 	.mark {
-		display: grid;
-		place-items: center;
-		width: 48px;
-		height: 48px;
-		border-radius: 14px;
-		background: var(--accent);
-		color: var(--accent-ink);
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 26px;
+		width: 72px;
+		height: 72px;
+		border-radius: 18px;
+		object-fit: cover;
 	}
 	h1 {
 		font-size: 38px;
